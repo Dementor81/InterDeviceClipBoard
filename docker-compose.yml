@@ -1,0 +1,16 @@
+services:
+  clipboard:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      DataDir: /data
+      MaxUploadBytes: 1073741824
+      MaxTotalBytes: 10737418240
+      AbandonedAfterDays: 30
+    volumes:
+      - clipboard-data:/data
+    restart: unless-stopped
+
+volumes:
+  clipboard-data:

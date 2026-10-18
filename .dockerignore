@@ -1,0 +1,7 @@
+**/.git
+**/bin
+**/obj
+**/node_modules
+data
+src/Clipboard.Server/wwwroot/app.js
+src/Clipboard.Server/wwwroot/main.js

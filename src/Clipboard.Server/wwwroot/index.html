@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Clipboard</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main>
+    <h1>Clipboard</h1>
+    <p id="message">Loading…</p>
+    <section id="board" hidden>
+      <div class="link-row">
+        <input id="board-link" readonly spellcheck="false" aria-label="Clipboard link">
+        <button type="button" id="copy-board">Copy link</button>
+      </div>
+      <label id="drop" class="drop">
+        <input id="picker" type="file" multiple>
+        <span>Drop files here, or choose them. Paste text or images anywhere on the page.</span>
+      </label>
+      <p id="progress" aria-live="polite"></p>
+      <p id="empty" hidden>Nothing here yet.</p>
+      <ul id="files"></ul>
+    </section>
+    <section id="missing" hidden>
+      <p>This clipboard does not exist.</p>
+      <button type="button" id="new-board">Start a new clipboard</button>
+    </section>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

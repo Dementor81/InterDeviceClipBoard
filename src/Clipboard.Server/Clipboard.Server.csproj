@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RootNamespace>Clipboard.Server</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
+  </ItemGroup>
+
+  <Target Name="CompileTypeScript" BeforeTargets="BeforeBuild" Condition="'$(SkipTypeScript)' != 'true'">
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)../../client/node_modules/.bin/tsc&quot; -p &quot;$(MSBuildThisFileDirectory)../../client/tsconfig.json&quot; &amp;&amp; mv -f &quot;$(MSBuildThisFileDirectory)wwwroot/main.js&quot; &quot;$(MSBuildThisFileDirectory)wwwroot/app.js&quot;" />
+  </Target>
+
+  <Target Name="AddCompiledScript" AfterTargets="CompileTypeScript" Condition="'$(SkipTypeScript)' != 'true'">
+    <ItemGroup>
+      <Content Include="$(MSBuildThisFileDirectory)wwwroot/app.js" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>

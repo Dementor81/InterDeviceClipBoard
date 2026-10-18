@@ -1,0 +1,6 @@
+bin/
+obj/
+data/
+client/node_modules/
+src/Clipboard.Server/wwwroot/app.js
+src/Clipboard.Server/wwwroot/main.js
