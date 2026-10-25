@@ -1,6 +1,7 @@
 services:
   clipboard:
-    build: .
+    image: marcus360/world_wide_digital_clipboard:latest
+    container_name: world_wide_digital_clipboard # Dies ist der interne Hostname für NPM
     ports:
       - "127.0.0.1:8080:8080"
     environment:
@@ -8,9 +9,19 @@ services:
       MaxUploadBytes: 1073741824
       MaxTotalBytes: 10737418240
       AbandonedAfterDays: 30
+      MaxClipboards: 100
     volumes:
       - clipboard-data:/data
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - proxy_net
+
+networks:
+  proxy_net:
+    external: true
+    name: main_proxy_network # Der Name des vom NPM erstellten Netzwerks
 
 volumes:
   clipboard-data:

@@ -1,6 +1,8 @@
 {
   "private": true,
   "devDependencies": {
-    "typescript": "~5.9.2"
+    "esbuild": "^0.28.2",
+    "typescript": "~5.9.2",
+    "uqr": "^0.1.3"
   }
 }

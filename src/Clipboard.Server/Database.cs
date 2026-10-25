@@ -44,10 +44,13 @@ public sealed class Database : IDisposable
         Execute("CREATE INDEX IF NOT EXISTS file_clipboard ON file (token_hash);");
     }
 
-    public void CreateClipboard(byte[] tokenHash, DateTimeOffset now)
+    public bool TryCreateClipboard(byte[] tokenHash, DateTimeOffset now, int maxClipboards)
     {
         lock (_gate)
         {
+            if (CountHeld() >= maxClipboards)
+                return false;
+
             using var command = _connection.CreateCommand();
             command.CommandText = """
                 INSERT INTO clipboard (token_hash, created_at, last_seen_at)
@@ -56,6 +59,7 @@ public sealed class Database : IDisposable
             AddBlob(command, "$token_hash", tokenHash);
             command.Parameters.AddWithValue("$now", Format(now));
             command.ExecuteNonQuery();
+            return true;
         }
     }
 
@@ -226,6 +230,13 @@ public sealed class Database : IDisposable
         command.Parameters.AddWithValue("$seen_at", Format(seenAt));
         AddBlob(command, "$token_hash", tokenHash);
         command.ExecuteNonQuery();
+    }
+
+    private long CountHeld()
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM clipboard";
+        return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
     }
 
     private long TotalBytesHeld()

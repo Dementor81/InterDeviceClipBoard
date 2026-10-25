@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Threading.RateLimiting;
 using Clipboard.Server;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -39,11 +40,15 @@ var options = new AppOptions
     DataDir = builder.Configuration["DataDir"] ?? "data",
     MaxUploadBytes = builder.Configuration.GetValue("MaxUploadBytes", 1_073_741_824L),
     MaxTotalBytes = builder.Configuration.GetValue("MaxTotalBytes", 10_737_418_240L),
-    AbandonedAfterDays = builder.Configuration.GetValue("AbandonedAfterDays", 30)
+    AbandonedAfterDays = builder.Configuration.GetValue("AbandonedAfterDays", 30),
+    MaxClipboards = builder.Configuration.GetValue("MaxClipboards", 100)
 };
 if (!Path.IsPathRooted(options.DataDir))
     options.DataDir = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, options.DataDir));
-if (options.MaxUploadBytes < 1 || options.MaxTotalBytes < options.MaxUploadBytes || options.AbandonedAfterDays < 1)
+if (options.MaxUploadBytes < 1
+    || options.MaxTotalBytes < options.MaxUploadBytes
+    || options.AbandonedAfterDays < 1
+    || options.MaxClipboards < 1)
     throw new InvalidOperationException("Clipboard limits are invalid.");
 
 Directory.CreateDirectory(options.DataDir);
@@ -52,6 +57,7 @@ builder.Services.AddSingleton(_ => new Database(Path.Combine(options.DataDir, "c
 builder.Services.AddSingleton(_ => new EncryptedBlobStore(options.DataDir));
 builder.Services.AddHostedService<AbandonedCleanupService>();
 
+var stamp = BuildStamp();
 var app = builder.Build();
 app.UseForwardedHeaders();
 app.Use(async (context, next) =>
@@ -85,7 +91,21 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseRateLimiter();
+app.MapGet("/api/version", () => Results.Json(new { version = stamp.Number, deployed = stamp.Deployed }));
 app.UseDefaultFiles();
 app.UseStaticFiles();
 ClipboardEndpoints.Map(app);
 app.Run();
+
+static (string Number, string Deployed) BuildStamp()
+{
+    var assembly = typeof(Program).Assembly;
+    var number = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
+    var plus = number.IndexOf('+', StringComparison.Ordinal);
+    if (plus >= 0)
+        number = number[..plus];
+
+    var deployed = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(attribute => attribute.Key == "DeployedOn")?.Value ?? "";
+    return (number, deployed);
+}

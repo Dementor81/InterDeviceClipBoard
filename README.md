@@ -67,3 +67,4 @@ Do not log request URIs. A clipboard token or a download key in an access log is
 - `MaxUploadBytes` — single file cap. Default 1073741824 (1 GiB).
 - `MaxTotalBytes` — total plaintext cap. Default 10737418240 (10 GiB).
 - `AbandonedAfterDays` — delete a clipboard that has not been opened for this many days. Default 30.
+- `MaxClipboards` — how many clipboards can exist at once. Creating another returns 409 until an unused clipboard is deleted. Default 100.

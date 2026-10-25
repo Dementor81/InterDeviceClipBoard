@@ -6,14 +6,23 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
     <RootNamespace>Clipboard.Server</RootNamespace>
+    <Version>0.1.0</Version>
+    <DeployedOn>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd"))</DeployedOn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>DeployedOn</_Parameter1>
+      <_Parameter2>$(DeployedOn)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
   </ItemGroup>
 
   <Target Name="CompileTypeScript" BeforeTargets="BeforeBuild" Condition="'$(SkipTypeScript)' != 'true'">
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)../../client/node_modules/.bin/tsc&quot; -p &quot;$(MSBuildThisFileDirectory)../../client/tsconfig.json&quot; &amp;&amp; mv -f &quot;$(MSBuildThisFileDirectory)wwwroot/main.js&quot; &quot;$(MSBuildThisFileDirectory)wwwroot/app.js&quot;" />
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)../../client/node_modules/.bin/tsc&quot; -p &quot;$(MSBuildThisFileDirectory)../../client/tsconfig.json&quot; --noEmit &amp;&amp; &quot;$(MSBuildThisFileDirectory)../../client/node_modules/.bin/esbuild&quot; &quot;$(MSBuildThisFileDirectory)../../client/src/main.ts&quot; --bundle --format=esm --target=es2022 --outfile=&quot;$(MSBuildThisFileDirectory)wwwroot/app.js&quot;" />
   </Target>
 
   <Target Name="AddCompiledScript" AfterTargets="CompileTypeScript" Condition="'$(SkipTypeScript)' != 'true'">

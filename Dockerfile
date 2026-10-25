@@ -2,8 +2,8 @@ FROM node:22-alpine AS client
 WORKDIR /src
 COPY client/package.json client/package-lock.json client/tsconfig.json client/
 COPY client/src client/src
-RUN cd client && npm ci && npx tsc -p tsconfig.json \
-    && mv ../src/Clipboard.Server/wwwroot/main.js ../src/Clipboard.Server/wwwroot/app.js
+RUN cd client && npm ci && npx tsc -p tsconfig.json --noEmit \
+    && npx esbuild src/main.ts --bundle --format=esm --target=es2022 --outfile=../src/Clipboard.Server/wwwroot/app.js
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src

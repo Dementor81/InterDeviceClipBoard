@@ -9,4 +9,6 @@ public sealed class AppOptions
     public long MaxTotalBytes { get; set; } = 10_737_418_240;
 
     public int AbandonedAfterDays { get; set; } = 30;
+
+    public int MaxClipboards { get; set; } = 100;
 }

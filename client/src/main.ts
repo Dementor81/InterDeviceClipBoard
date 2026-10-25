@@ -1,3 +1,5 @@
+import { encode } from "uqr";
+
 const TOKEN_KEY = "idcb-token";
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
@@ -12,23 +14,42 @@ type FileRow = {
 
 const message = element<HTMLParagraphElement>("message");
 const board = element<HTMLElement>("board");
+const boardActions = element<HTMLDivElement>("board-actions");
 const missing = element<HTMLElement>("missing");
-const boardLink = element<HTMLInputElement>("board-link");
 const copyBoard = element<HTMLButtonElement>("copy-board");
+const qrBoard = element<HTMLButtonElement>("qr-board");
+const qrPanel = element<HTMLDivElement>("qr-panel");
+const qrCode = element<HTMLDivElement>("qr-code");
 const drop = element<HTMLLabelElement>("drop");
 const picker = element<HTMLInputElement>("picker");
 const progress = element<HTMLParagraphElement>("progress");
 const empty = element<HTMLParagraphElement>("empty");
 const filesList = element<HTMLUListElement>("files");
 const newBoard = element<HTMLButtonElement>("new-board");
+const about = element<HTMLElement>("about");
 
 let token = "";
 let queue: File[] = [];
 let pumping = false;
 let dragDepth = 0;
+let qrFor = "";
 
 copyBoard.addEventListener("click", () => {
-  void copyText(boardLink.value, copyBoard);
+  void copyBoardLink();
+});
+
+qrBoard.addEventListener("click", () => {
+  setQrOpen(qrPanel.hidden);
+});
+
+qrPanel.addEventListener("click", (event) => {
+  if (event.target === qrPanel)
+    setQrOpen(false);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !qrPanel.hidden)
+    setQrOpen(false);
 });
 
 picker.addEventListener("change", () => {
@@ -78,7 +99,27 @@ newBoard.addEventListener("click", () => {
   location.assign("/");
 });
 
+void loadAbout();
 void start();
+
+async function loadAbout(): Promise<void> {
+  const response = await fetch("/api/version", { cache: "no-store" });
+  if (!response.ok)
+    return;
+
+  const body = (await response.json()) as { version: string; deployed: string };
+  const date = deployedDate(body.deployed);
+  about.textContent = date ? `Version ${body.version} · ${date}` : `Version ${body.version}`;
+}
+
+function deployedDate(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match)
+    return "";
+
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return date.toLocaleDateString(undefined, { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
+}
 
 async function start(): Promise<void> {
   const pathToken = tokenFromPath();
@@ -97,6 +138,10 @@ async function start(): Promise<void> {
   const response = await fetch("/api/clipboards", { method: "POST", cache: "no-store" });
   if (response.status === 429) {
     setStatus("Too many new clipboards from this network. Try again later.");
+    return;
+  }
+  if (response.status === 409) {
+    setStatus("This server isn't accepting new clipboards.");
     return;
   }
   if (!response.ok) {
@@ -125,7 +170,8 @@ async function refresh(): Promise<void> {
 
   localStorage.setItem(TOKEN_KEY, token);
   const files = (await response.json()) as FileRow[];
-  boardLink.value = `${location.origin}/c/${token}`;
+  if (!qrPanel.hidden)
+    paintQr();
   setStatus("");
   showBoard();
   render(files);
@@ -284,6 +330,22 @@ function pastedText(text: string): File {
   return new File([text], `text-${stamp}.txt`, { type: "text/plain" });
 }
 
+async function copyBoardLink(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(boardUrl());
+  } catch {
+    setStatus("Couldn't copy the link.");
+    return;
+  }
+
+  copyBoard.classList.add("copied");
+  copyBoard.setAttribute("aria-label", "Copied");
+  window.setTimeout(() => {
+    copyBoard.classList.remove("copied");
+    copyBoard.setAttribute("aria-label", "Copy link");
+  }, 1500);
+}
+
 async function copyText(text: string, button: HTMLButtonElement): Promise<void> {
   const previous = button.textContent ?? "";
   try {
@@ -315,17 +377,62 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
+function boardUrl(): string {
+  return `${location.origin}/c/${token}`;
+}
+
+function setQrOpen(open: boolean): void {
+  qrPanel.hidden = !open;
+  qrBoard.setAttribute("aria-expanded", String(open));
+  if (open)
+    paintQr();
+}
+
+function paintQr(): void {
+  const text = boardUrl();
+  if (!text || text === qrFor)
+    return;
+
+  qrFor = text;
+  const qr = encode(text, { ecc: "M", border: 2 });
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${qr.size} ${qr.size}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "QR code for this clipboard link");
+  const background = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  background.setAttribute("width", String(qr.size));
+  background.setAttribute("height", String(qr.size));
+  svg.append(background);
+  const modules = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const parts: string[] = [];
+  for (let y = 0; y < qr.size; y++) {
+    const row = qr.data[y];
+    if (!row)
+      continue;
+    for (let x = 0; x < qr.size; x++) {
+      if (row[x])
+        parts.push(`M${x} ${y}h1v1h-1z`);
+    }
+  }
+  modules.setAttribute("d", parts.join(""));
+  svg.append(modules);
+  qrCode.replaceChildren(svg);
+}
+
 function tokenFromPath(): string | null {
   return location.pathname.match(/^\/c\/([A-Za-z0-9_-]{43})$/)?.[1] ?? null;
 }
 
 function showBoard(): void {
   board.hidden = false;
+  boardActions.hidden = false;
   missing.hidden = true;
 }
 
 function showMissing(): void {
+  setQrOpen(false);
   board.hidden = true;
+  boardActions.hidden = true;
   missing.hidden = false;
   setStatus("");
 }

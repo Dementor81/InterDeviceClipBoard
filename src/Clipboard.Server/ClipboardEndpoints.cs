@@ -18,12 +18,13 @@ public static class ClipboardEndpoints
         app.MapGet("/app.js", Script);
     }
 
-    private static IResult Create(Database database)
+    private static IResult Create(Database database, AppOptions options)
     {
         var (text, bytes) = BoardCrypto.CreateToken();
         try
         {
-            database.CreateClipboard(BoardCrypto.HashToken(bytes), DateTimeOffset.UtcNow);
+            if (!database.TryCreateClipboard(BoardCrypto.HashToken(bytes), DateTimeOffset.UtcNow, options.MaxClipboards))
+                return Results.StatusCode(StatusCodes.Status409Conflict);
         }
         finally
         {
