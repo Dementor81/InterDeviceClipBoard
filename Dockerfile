@@ -1,4 +1,4 @@
-FROM node:22-alpine AS client
+FROM node:24-alpine AS client
 WORKDIR /src
 COPY client/package.json client/package-lock.json client/tsconfig.json client/
 COPY client/src client/src

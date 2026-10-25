@@ -8,7 +8,7 @@ Uploaded bytes are encrypted on disk. The server stores only a hash of the clipb
 
 ## Run locally
 
-Requires the .NET 10 SDK and Node.js.
+Requires the .NET 10 SDK and Node.js 24.
 
 ```bash
 cd client
@@ -26,39 +26,6 @@ docker compose up --build
 ```
 
 The app listens on 127.0.0.1:8080. Put HTTPS in front of it, and do not publish port 8080 on a public interface. Request paths contain the clipboard token and download keys.
-
-### Caddy
-
-```
-example.com {
-    reverse_proxy 127.0.0.1:8080
-    log {
-        output discard
-    }
-}
-```
-
-### nginx
-
-```
-server {
-    listen 443 ssl;
-    server_name example.com;
-    access_log off;
-    client_max_body_size 1100m;
-
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto https;
-        proxy_request_buffering off;
-        proxy_read_timeout 1h;
-    }
-}
-```
-
 Do not log request URIs. A clipboard token or a download key in an access log is a copy of the secret.
 
 ## Configuration
@@ -67,4 +34,3 @@ Do not log request URIs. A clipboard token or a download key in an access log is
 - `MaxUploadBytes` — single file cap. Default 1073741824 (1 GiB).
 - `MaxTotalBytes` — total plaintext cap. Default 10737418240 (10 GiB).
 - `AbandonedAfterDays` — delete a clipboard that has not been opened for this many days. Default 30.
-- `MaxClipboards` — how many clipboards can exist at once. Creating another returns 409 until an unused clipboard is deleted. Default 100.
