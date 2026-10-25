@@ -6,12 +6,13 @@ RUN cd client && npm ci && npx tsc -p tsconfig.json --noEmit \
     && npx esbuild src/main.ts --bundle --format=esm --target=es2022 --outfile=../src/Clipboard.Server/wwwroot/app.js
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG APP_VERSION=0.1.0
 WORKDIR /src
 COPY src/Clipboard.Server/Clipboard.Server.csproj src/Clipboard.Server/
 RUN dotnet restore src/Clipboard.Server/Clipboard.Server.csproj
 COPY src/Clipboard.Server src/Clipboard.Server
 COPY --from=client /src/src/Clipboard.Server/wwwroot/app.js src/Clipboard.Server/wwwroot/app.js
-RUN dotnet publish src/Clipboard.Server/Clipboard.Server.csproj -c Release -o /app /p:SkipTypeScript=true
+RUN dotnet publish src/Clipboard.Server/Clipboard.Server.csproj -c Release -o /app /p:SkipTypeScript=true /p:Version=${APP_VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app

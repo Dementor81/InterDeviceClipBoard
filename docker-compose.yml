@@ -14,7 +14,7 @@ services:
       - clipboard-data:/data
     restart: unless-stopped
     labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+      com.centurylinklabs.watchtower.enable: "true"
     networks:
       - proxy_net
 

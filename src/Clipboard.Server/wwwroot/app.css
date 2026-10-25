@@ -153,6 +153,26 @@ button,
   cursor: pointer;
 }
 
+.actions a,
+.actions button {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+}
+
+.actions a:hover,
+.actions button:hover {
+  background: #f3f7fb;
+}
+
+.actions svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: block;
+}
+
 .actions a {
   color: var(--blue);
   border-color: #b9cff0;
@@ -188,11 +208,14 @@ button,
   display: block;
 }
 
-#copy-board .icon-check { display: none; }
+#copy-board .icon-check,
+.actions .icon-check { display: none; }
 
-#copy-board.copied .icon-copy { display: none; }
+#copy-board.copied .icon-copy,
+.actions .copied .icon-copy { display: none; }
 
-#copy-board.copied .icon-check { display: block; }
+#copy-board.copied .icon-check,
+.actions .copied .icon-check { display: block; }
 
 #files {
   list-style: none;
@@ -223,18 +246,7 @@ button,
 
 .actions { flex-shrink: 0; }
 
-.trash {
-  display: grid;
-  place-items: center;
-  padding: 0.4rem 0.55rem;
-  color: var(--danger);
-}
-
-.trash svg {
-  width: 1.05rem;
-  height: 1.05rem;
-  display: block;
-}
+.trash { color: var(--danger); }
 
 #progress,
 #empty {

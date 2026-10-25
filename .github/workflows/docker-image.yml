@@ -27,6 +27,10 @@ jobs:
           context: .
           file: dockerfile
           push: true
-          tags: marcus360/world_wide_digital_clipboard:latest
+          tags: |
+            marcus360/world_wide_digital_clipboard:latest
+            marcus360/world_wide_digital_clipboard:0.1.${{ github.run_number }}
+          build-args: |
+            APP_VERSION=0.1.${{ github.run_number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

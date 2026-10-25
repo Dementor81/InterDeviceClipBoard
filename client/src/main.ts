@@ -258,18 +258,28 @@ function render(files: FileRow[]): void {
     actions.className = "actions";
     const download = document.createElement("a");
     download.href = file.downloadPath;
-    download.textContent = "Download";
+    download.title = "Download";
+    download.setAttribute("aria-label", `Download ${file.name}`);
+    download.append(icon(
+      `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>`
+    ));
     const copy = document.createElement("button");
     copy.type = "button";
-    copy.textContent = "Copy link";
+    copy.title = "Copy link";
+    copy.setAttribute("aria-label", `Copy link to ${file.name}`);
+    copy.append(
+      icon(`<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/>`, "icon-copy"),
+      icon(`<path d="M5 12.5 9.5 17 19 7"/>`, "icon-check")
+    );
     copy.addEventListener("click", () => {
       void copyText(`${location.origin}${file.downloadPath}`, copy);
     });
     const trash = document.createElement("button");
     trash.type = "button";
     trash.className = "trash";
+    trash.title = "Delete";
     trash.setAttribute("aria-label", `Delete ${file.name}`);
-    trash.append(trashIcon());
+    trash.append(icon(`<path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/>`));
     trash.addEventListener("click", () => {
       void remove(file);
     });
@@ -331,31 +341,26 @@ function pastedText(text: string): File {
 }
 
 async function copyBoardLink(): Promise<void> {
+  await copyText(boardUrl(), copyBoard);
+}
+
+async function copyText(text: string, button: HTMLButtonElement): Promise<void> {
+  if (button.classList.contains("copied"))
+    return;
+
+  const label = button.getAttribute("aria-label") ?? "Copy link";
   try {
-    await navigator.clipboard.writeText(boardUrl());
+    await navigator.clipboard.writeText(text);
   } catch {
     setStatus("Couldn't copy the link.");
     return;
   }
 
-  copyBoard.classList.add("copied");
-  copyBoard.setAttribute("aria-label", "Copied");
+  button.classList.add("copied");
+  button.setAttribute("aria-label", "Copied");
   window.setTimeout(() => {
-    copyBoard.classList.remove("copied");
-    copyBoard.setAttribute("aria-label", "Copy link");
-  }, 1500);
-}
-
-async function copyText(text: string, button: HTMLButtonElement): Promise<void> {
-  const previous = button.textContent ?? "";
-  try {
-    await navigator.clipboard.writeText(text);
-    button.textContent = "Copied";
-  } catch {
-    button.textContent = "Copy failed";
-  }
-  window.setTimeout(() => {
-    button.textContent = previous;
+    button.classList.remove("copied");
+    button.setAttribute("aria-label", label);
   }, 1500);
 }
 
@@ -441,7 +446,7 @@ function setStatus(text: string): void {
   message.textContent = text;
 }
 
-function trashIcon(): SVGSVGElement {
+function icon(markup: string, className = ""): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
@@ -450,9 +455,9 @@ function trashIcon(): SVGSVGElement {
   svg.setAttribute("stroke-width", "1.8");
   svg.setAttribute("stroke-linecap", "round");
   svg.setAttribute("stroke-linejoin", "round");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", "M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13");
-  svg.append(path);
+  if (className)
+    svg.setAttribute("class", className);
+  svg.innerHTML = markup;
   return svg;
 }
 
