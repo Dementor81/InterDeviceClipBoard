@@ -84,7 +84,7 @@ h1 {
   align-items: center;
 }
 
-#qr-panel {
+.overlay {
   position: fixed;
   inset: 0;
   z-index: 2;
@@ -94,14 +94,68 @@ h1 {
   background: rgb(18 38 63 / 0.38);
 }
 
-#qr-panel[hidden] { display: none; }
+.overlay[hidden] { display: none; }
 
-.qr-card {
-  padding: 1.25rem;
+.panel-card {
+  position: relative;
+  padding: 2.75rem 1.25rem 1.25rem;
   background: var(--paper);
   border-radius: 1rem;
   box-shadow: 0 1.25rem 3rem rgb(18 38 63 / 0.22);
 }
+
+.panel-close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+.panel-close svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+}
+
+.panel-close:hover { background: #f3f7fb; }
+
+.text-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: min(36rem, 100%);
+  max-height: calc(100vh - 3rem);
+}
+
+#text-body {
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  min-height: 0;
+}
+
+#copy-text {
+  align-self: flex-end;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+}
+
+#copy-text svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: block;
+}
+
+#copy-text:hover { background: #f3f7fb; }
 
 #qr-code svg {
   width: min(14rem, 100%);
@@ -209,12 +263,15 @@ button,
 }
 
 #copy-board .icon-check,
+#copy-text .icon-check,
 .actions .icon-check { display: none; }
 
 #copy-board.copied .icon-copy,
+#copy-text.copied .icon-copy,
 .actions .copied .icon-copy { display: none; }
 
 #copy-board.copied .icon-check,
+#copy-text.copied .icon-check,
 .actions .copied .icon-check { display: block; }
 
 #files {
@@ -232,11 +289,37 @@ button,
   border-top: 1px solid var(--line);
 }
 
+.info {
+  min-width: 0;
+  flex: 1;
+}
+
 .name {
   margin: 0;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
+
+.text-preview {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-preview:hover { color: var(--blue); }
 
 .meta {
   margin: 0.15rem 0 0;

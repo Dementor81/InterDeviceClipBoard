@@ -1,8 +1,5 @@
 import { encode } from "uqr";
 
-const TOKEN_KEY = "idcb-token";
-const TOKEN = /^[A-Za-z0-9_-]{43}$/;
-
 type FileRow = {
   id: string;
   name: string;
@@ -27,12 +24,20 @@ const empty = element<HTMLParagraphElement>("empty");
 const filesList = element<HTMLUListElement>("files");
 const newBoard = element<HTMLButtonElement>("new-board");
 const about = element<HTMLElement>("about");
+const textPanel = element<HTMLDivElement>("text-panel");
+const textBody = element<HTMLPreElement>("text-body");
+const copyTextButton = element<HTMLButtonElement>("copy-text");
+
+const TEXT_NAME = /^text-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.txt$/;
+const TEXT_LIMIT = 256 * 1024;
 
 let token = "";
 let queue: File[] = [];
 let pumping = false;
 let dragDepth = 0;
 let qrFor = "";
+let shownText = "";
+let renderGeneration = 0;
 
 copyBoard.addEventListener("click", () => {
   void copyBoardLink();
@@ -47,8 +52,31 @@ qrPanel.addEventListener("click", (event) => {
     setQrOpen(false);
 });
 
+textPanel.addEventListener("click", (event) => {
+  if (event.target === textPanel)
+    setTextOpen(false);
+});
+
+for (const button of document.querySelectorAll<HTMLButtonElement>(".panel-close")) {
+  button.addEventListener("click", () => {
+    const panel = button.closest(".overlay");
+    if (panel === qrPanel)
+      setQrOpen(false);
+    else if (panel === textPanel)
+      setTextOpen(false);
+  });
+}
+
+copyTextButton.addEventListener("click", () => {
+  void copyText(shownText, copyTextButton);
+});
+
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !qrPanel.hidden)
+  if (event.key !== "Escape")
+    return;
+  if (!textPanel.hidden)
+    setTextOpen(false);
+  else if (!qrPanel.hidden)
     setQrOpen(false);
 });
 
@@ -95,7 +123,6 @@ document.addEventListener("paste", (event) => {
 });
 
 newBoard.addEventListener("click", () => {
-  localStorage.removeItem(TOKEN_KEY);
   location.assign("/");
 });
 
@@ -122,16 +149,12 @@ function deployedDate(iso: string): string {
 }
 
 async function start(): Promise<void> {
+  localStorage.removeItem("idcb-token");
+
   const pathToken = tokenFromPath();
   if (pathToken) {
     token = pathToken;
     await refresh();
-    return;
-  }
-
-  const saved = localStorage.getItem(TOKEN_KEY);
-  if (saved && TOKEN.test(saved)) {
-    location.replace(`/c/${saved}`);
     return;
   }
 
@@ -150,7 +173,6 @@ async function start(): Promise<void> {
   }
 
   const body = (await response.json()) as { token: string };
-  localStorage.setItem(TOKEN_KEY, body.token);
   location.replace(`/c/${body.token}`);
 }
 
@@ -168,7 +190,6 @@ async function refresh(): Promise<void> {
     return;
   }
 
-  localStorage.setItem(TOKEN_KEY, token);
   const files = (await response.json()) as FileRow[];
   if (!qrPanel.hidden)
     paintQr();
@@ -209,12 +230,13 @@ function upload(file: File): Promise<boolean> {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/files");
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    const label = isPastedName(file.name, file.type) ? "text" : file.name;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) {
         const percent = Math.round((event.loaded / event.total) * 100);
-        progress.textContent = `Uploading ${file.name} — ${percent}%`;
+        progress.textContent = `Uploading ${label} — ${percent}%`;
       } else {
-        progress.textContent = `Uploading ${file.name}…`;
+        progress.textContent = `Uploading ${label}…`;
       }
     };
     xhr.onload = () => {
@@ -241,56 +263,108 @@ function upload(file: File): Promise<boolean> {
 }
 
 function render(files: FileRow[]): void {
+  const generation = ++renderGeneration;
   filesList.replaceChildren();
   empty.hidden = files.length > 0;
   for (const file of files) {
+    const snippet = isSnippet(file);
+    const label = snippet ? "text" : file.name;
     const item = document.createElement("li");
     const info = document.createElement("div");
-    const name = document.createElement("p");
-    name.className = "name";
-    name.textContent = file.name;
+    info.className = "info";
+    if (snippet) {
+      const preview = document.createElement("button");
+      preview.type = "button";
+      preview.className = "text-preview";
+      preview.textContent = "…";
+      preview.setAttribute("aria-busy", "true");
+      info.append(preview);
+      void loadSnippet(file, generation, preview);
+    } else {
+      const name = document.createElement("p");
+      name.className = "name";
+      name.textContent = file.name;
+      info.append(name);
+    }
     const meta = document.createElement("p");
     meta.className = "meta";
     meta.textContent = `${formatSize(file.size)} · ${formatTime(file.createdAt)}`;
-    info.append(name, meta);
+    info.append(meta);
 
     const actions = document.createElement("div");
     actions.className = "actions";
-    const download = document.createElement("a");
-    download.href = file.downloadPath;
-    download.title = "Download";
-    download.setAttribute("aria-label", `Download ${file.name}`);
-    download.append(icon(
-      `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>`
-    ));
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.title = "Copy link";
-    copy.setAttribute("aria-label", `Copy link to ${file.name}`);
-    copy.append(
-      icon(`<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/>`, "icon-copy"),
-      icon(`<path d="M5 12.5 9.5 17 19 7"/>`, "icon-check")
-    );
-    copy.addEventListener("click", () => {
-      void copyText(`${location.origin}${file.downloadPath}`, copy);
-    });
+    if (!snippet) {
+      const download = document.createElement("a");
+      download.href = file.downloadPath;
+      download.title = "Download";
+      download.setAttribute("aria-label", `Download ${label}`);
+      download.append(icon(
+        `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>`
+      ));
+      actions.append(download);
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.title = "Copy link";
+      copy.setAttribute("aria-label", `Copy link to ${file.name}`);
+      copy.append(
+        icon(`<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/>`, "icon-copy"),
+        icon(`<path d="M5 12.5 9.5 17 19 7"/>`, "icon-check")
+      );
+      copy.addEventListener("click", () => {
+        void copyText(`${location.origin}${file.downloadPath}`, copy);
+      });
+      actions.append(copy);
+    }
     const trash = document.createElement("button");
     trash.type = "button";
     trash.className = "trash";
     trash.title = "Delete";
-    trash.setAttribute("aria-label", `Delete ${file.name}`);
+    trash.setAttribute("aria-label", `Delete ${label}`);
     trash.append(icon(`<path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/>`));
     trash.addEventListener("click", () => {
       void remove(file);
     });
-    actions.append(download, copy, trash);
+    actions.append(trash);
     item.append(info, actions);
     filesList.append(item);
   }
 }
 
+async function loadSnippet(file: FileRow, generation: number, preview: HTMLButtonElement): Promise<void> {
+  let text = "";
+  try {
+    const response = await fetch(file.downloadPath, { cache: "no-store" });
+    if (!response.ok)
+      throw new Error("load");
+    text = await response.text();
+  } catch {
+    if (generation !== renderGeneration)
+      return;
+    preview.textContent = "Couldn't load text.";
+    preview.removeAttribute("aria-busy");
+    return;
+  }
+
+  if (generation !== renderGeneration)
+    return;
+
+  preview.textContent = text;
+  preview.removeAttribute("aria-busy");
+  preview.addEventListener("click", () => {
+    setTextOpen(true, text);
+  });
+}
+
+function isSnippet(file: FileRow): boolean {
+  return file.size <= TEXT_LIMIT && isPastedName(file.name, file.mediaType);
+}
+
+function isPastedName(name: string, mediaType: string): boolean {
+  return mediaType === "text/plain" && TEXT_NAME.test(name);
+}
+
 async function remove(file: FileRow): Promise<void> {
-  if (!confirm(`Delete ${file.name}?`))
+  if (!confirm(isSnippet(file) ? "Delete this text?" : `Delete ${file.name}?`))
     return;
 
   const response = await fetch(`/api/files/${file.id}`, {
@@ -352,7 +426,7 @@ async function copyText(text: string, button: HTMLButtonElement): Promise<void> 
   try {
     await navigator.clipboard.writeText(text);
   } catch {
-    setStatus("Couldn't copy the link.");
+    setStatus("Couldn't copy.");
     return;
   }
 
@@ -389,8 +463,22 @@ function boardUrl(): string {
 function setQrOpen(open: boolean): void {
   qrPanel.hidden = !open;
   qrBoard.setAttribute("aria-expanded", String(open));
-  if (open)
-    paintQr();
+  if (!open)
+    return;
+  textPanel.hidden = true;
+  paintQr();
+}
+
+function setTextOpen(open: boolean, text = ""): void {
+  textPanel.hidden = !open;
+  if (!open)
+    return;
+  qrPanel.hidden = true;
+  qrBoard.setAttribute("aria-expanded", "false");
+  shownText = text;
+  textBody.textContent = text;
+  copyTextButton.classList.remove("copied");
+  copyTextButton.setAttribute("aria-label", "Copy text");
 }
 
 function paintQr(): void {
@@ -436,6 +524,7 @@ function showBoard(): void {
 
 function showMissing(): void {
   setQrOpen(false);
+  setTextOpen(false);
   board.hidden = true;
   boardActions.hidden = true;
   missing.hidden = false;

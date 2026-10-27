@@ -2,7 +2,7 @@
 
 Personal clipboard for moving files between devices. The link is the key.
 
-Opening the site creates a clipboard and remembers it in that browser. The same `/c/{token}` link on another device shows the same files. Each file also has a download link that can fetch that file and nothing else.
+Opening the site creates a clipboard. Bookmark the `/c/{token}` link to return to it. The same link on another device shows the same files. Each file also has a download link that can fetch that file and nothing else.
 
 Uploaded bytes are encrypted on disk. The server stores only a hash of the clipboard token. A clipboard that is not opened for `AbandonedAfterDays` (default 30) is deleted with its files. Opening the link resets that timer.
 
